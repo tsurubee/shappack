@@ -1,0 +1,5 @@
+# macOS metadata
+.DS_Store
+
+# IPython Notebook
+.ipynb_checkpoints
