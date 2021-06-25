@@ -1,3 +1,8 @@
+*.egg-info/
+
+# Virtual Environment
+venv/
+
 # macOS metadata
 .DS_Store
 
