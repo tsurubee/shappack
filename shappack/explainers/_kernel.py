@@ -26,8 +26,32 @@ class KernelExplainer(BaseExplainer):
         self.base_val = np.sum(self.linkf(out_val)) / self.n_data
         # TODO: Support classification problem outputs
 
-    def shap_values(self, X, n_samples="auto"):
+    def shap_values(self, X, n_samples="auto", l1_reg="auto"):
+        X = self.convert_to_nparray(X)
+        if len(X.shape) == 1:
+            instance = X.reshape(1, -1)
+            if instance.shape[1] != self.n_features:
+                raise ValueError(
+                    "The number of features in instance X and the background dataset do not match."
+                )
+            shap_values = self._shap_values(instance, n_samples)
+            return shap_values
+        elif len(X.shape) == 2:
+            # TODO: Support multiple instances
+            pass
+        else:
+            raise ValueError("The instances X to be interpreted must be a vector or 2D matrix")
+
+    def _shap_values(self, instance, n_samples, l1_reg):
+        # Sampling Subsets (Set of binary vectors)
+
+        # Applying the Characteristic Function
+
+        # Solving Weighted Least Squares
         pass
 
     def _sampling(self, n_samples):
+        pass
+
+    def _solve(self):
         pass
