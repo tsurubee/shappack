@@ -96,11 +96,11 @@ class KernelExplainer(BaseExplainer):
                 weight = weight_vector[subset_size - 1] / binom(self.n_features, subset_size)
                 if subset_size <= n_paired_subset_size:
                     weight /= 2.0
-                for inds in itertools.combinations(
+                for idx in itertools.combinations(
                     np.arange(self.n_features, dtype="int64"), subset_size
                 ):
                     binary_vec[:] = 0.0
-                    binary_vec[np.array(inds, dtype="int64")] = 1.0
+                    binary_vec[np.array(idx, dtype="int64")] = 1.0
                     self._add_sample(binary_vec, weight)
                     # Create a binary vector with inverted "0" and "1".
                     if subset_size <= n_paired_subset_size:
@@ -108,7 +108,56 @@ class KernelExplainer(BaseExplainer):
                         self._add_sample(binary_vec, weight)
             else:
                 break
-        # TODO: Add samples to the rest of the subset space
+        # Add samples to the rest of the subset space
+        n_fixed_samples = self.n_added_samples
+        if n_full_subsets != n_subset_size:
+            remaining_weight_vector = copy.copy(weight_vector)
+            remaining_weight_vector[:n_paired_subset_size] /= 2
+            remaining_weight_vector = remaining_weight_vector[n_full_subsets:]
+            remaining_weight_vector /= np.sum(remaining_weight_vector)
+            idx_set = np.random.choice(
+                len(remaining_weight_vector),
+                size=4 * int(n_remaining_samples),
+                p=remaining_weight_vector,
+            )
+            idx_set_pos = 0
+            used_binary_vec = {}
+            while n_remaining_samples > 0 and idx_set_pos < len(idx_set):
+                binary_vec[:] = 0.0
+                idx = idx_set[idx_set_pos]
+                idx_set_pos += 1
+                subset_size = idx + n_full_subsets + 1
+                binary_vec[np.random.permutation(self.n_features)[:subset_size]] = 1.0
+
+                # only add the sample if we have not seen it before, otherwise just
+                # increment a previous sample's weight
+                binary_tuple = tuple(binary_vec)
+                is_new_sample = False
+                if binary_tuple not in used_binary_vec:
+                    is_new_sample = True
+                    used_binary_vec[binary_tuple] = self.n_added_samples
+                    n_remaining_samples -= 1
+                    self._add_sample(binary_vec, 1.0)
+                else:
+                    self.kernel_weights[used_binary_vec[binary_tuple]] += 1.0
+
+                if n_remaining_samples > 0 and subset_size <= n_paired_subset_size:
+                    binary_vec[:] = np.abs(binary_vec - 1)
+                    # only add the sample if we have not seen it before, otherwise just
+                    # increment a previous sample's weight
+                    if is_new_sample:
+                        n_remaining_samples -= 1
+                        self._add_sample(binary_vec, 1.0)
+                    else:
+                        # we know the compliment sample is the next one after the original sample, so + 1
+                        self.kernel_weights[used_binary_vec[binary_tuple] + 1] += 1.0
+
+            # Normalize the kernel weights for the random samples to equal the weight left after
+            # the fixed enumerated samples have been already counted
+            weight_left = np.sum(weight_vector[n_full_subsets:])
+            self.kernel_weights[n_fixed_samples:] *= (
+                weight_left / self.kernel_weights[n_fixed_samples:].sum()
+            )
 
     def _add_sample(self, binary_vec, weight):
         self.subsets[self.n_added_samples, :] = binary_vec
