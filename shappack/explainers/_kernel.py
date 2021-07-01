@@ -5,6 +5,7 @@ import numpy as np
 from scipy.special import binom
 from ._base import BaseExplainer
 from ..utils._link import convert_to_link
+from ..characteristic_funcs.reference import kernel_shap
 
 
 class KernelExplainer(BaseExplainer):
@@ -45,7 +46,9 @@ class KernelExplainer(BaseExplainer):
         else:
             raise ValueError("The instances X to be interpreted must be a vector or 2D matrix")
 
-    def _shap_values(self, instance, n_samples, l1_reg):
+    def _shap_values(
+        self, instance, n_samples, l1_reg, n_workers=1, characteristic_func="kernelshap"
+    ):
         # Compute f(x), the predicted value for instance
         self.fx = self.model(instance)
         # If there is only one feature, it has all the effects
@@ -53,12 +56,18 @@ class KernelExplainer(BaseExplainer):
             phi = self.link.f(self.fx) - self.link.f(self.base_val)
             return phi
 
-        # Sampling Subsets (Set of binary vectors)
+        # 1. Sampling Subsets (Set of binary vectors)
         self._sampling(n_samples)
 
-        # Applying the Characteristic Function
+        # 2. Applying the Characteristic Function
+        if callable(characteristic_func):
+            self.characteristic_func = characteristic_func
+        elif characteristic_func == "kernelshap":
+            self.characteristic_func = kernel_shap
+        else:
+            raise ValueError('`characteristic_func` should be "kernelshap" or callable function')
 
-        # Solving Weighted Least Squares
+        # 3. Solving Weighted Least Squares
         return
 
     def _sampling(self, n_samples):
