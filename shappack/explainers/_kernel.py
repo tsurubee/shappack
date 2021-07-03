@@ -1,8 +1,10 @@
+import os
 import warnings
 import copy
 import itertools
 import numpy as np
 from scipy.special import binom
+from concurrent.futures import ProcessPoolExecutor
 from ._base import BaseExplainer
 from ..utils._link import convert_to_link
 from ..characteristic_funcs.reference import kernel_shap
@@ -30,7 +32,9 @@ class KernelExplainer(BaseExplainer):
         self.base_val = np.sum(self.linkf(out_val)) / self.n_data
         # TODO: Support classification problem outputs
 
-    def shap_values(self, X, n_samples="auto", l1_reg="auto"):
+    def shap_values(
+        self, X, n_samples="auto", l1_reg="auto", n_workers=1, characteristic_func="kernelshap"
+    ):
         X = self.convert_to_nparray(X)
         if len(X.shape) == 1:
             instance = X.reshape(1, -1)
@@ -38,7 +42,9 @@ class KernelExplainer(BaseExplainer):
                 raise ValueError(
                     "The number of features in instance X and the background dataset do not match."
                 )
-            shap_values = self._shap_values(instance, n_samples, l1_reg)
+            shap_values = self._shap_values(
+                instance, n_samples, l1_reg, n_workers, characteristic_func
+            )
             return shap_values
         elif len(X.shape) == 2:
             # TODO: Support multiple instances
@@ -46,9 +52,7 @@ class KernelExplainer(BaseExplainer):
         else:
             raise ValueError("The instances X to be interpreted must be a vector or 2D matrix")
 
-    def _shap_values(
-        self, instance, n_samples, l1_reg, n_workers=1, characteristic_func="kernelshap"
-    ):
+    def _shap_values(self, instance, n_samples, l1_reg, n_workers, characteristic_func):
         # Compute f(x), the predicted value for instance
         self.fx = self.model(instance)
         # If there is only one feature, it has all the effects
@@ -67,7 +71,8 @@ class KernelExplainer(BaseExplainer):
         else:
             raise ValueError('`characteristic_func` should be "kernelshap" or callable function')
 
-        # 3. Solving Weighted Least Squares
+        if n_workers == 1:
+            self.y_pred = self.characteristic_func(instance, self.subsets, self.model)
         return
 
     def _sampling(self, n_samples):
