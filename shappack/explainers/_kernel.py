@@ -73,6 +73,29 @@ class KernelExplainer(BaseExplainer):
 
         if n_workers == 1:
             self.y_pred = self.characteristic_func(instance, self.subsets, self.model)
+        else:
+            cpu_count = os.cpu_count()
+            if n_workers < -1:
+                raise ValueError("n_workers option should be -1 or non-negative value")
+            elif n_workers == -1:
+                n_workers = cpu_count or 1
+            elif n_workers > cpu_count:
+                warnings.warn(
+                    f"n_workers={n_workers} is larger than os.cpu_count()={cpu_count}.",
+                    UserWarning,
+                )
+                n_workers = cpu_count or 1
+            # Splitting data for multi-processing
+            subsets_list = np.array_split(self.subsets, n_workers)
+            with ProcessPoolExecutor(max_workers=n_workers) as executor:
+                futures = [
+                    executor.submit(self.characteristic_func, instance, subsets, self.model)
+                    for subsets in subsets_list
+                ]
+                results = [f.result() for f in futures]
+            self.y_pred = results
+
+            # 3. Solving Weighted Least Squares
         return
 
     def _sampling(self, n_samples):
