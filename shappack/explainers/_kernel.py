@@ -99,8 +99,10 @@ class KernelExplainer(BaseExplainer):
                 results = [f.result() for f in futures]
             self.y_pred = np.hstack(results)
 
-            # 3. Solving Weighted Least Squares
-        return
+        # 3. Solving Weighted Least Squares
+        phi = self._solve(l1_reg)
+
+        return phi
 
     def _sampling(self, n_samples):
         if n_samples == "auto":
@@ -205,5 +207,36 @@ class KernelExplainer(BaseExplainer):
         self.kernel_weights[self.n_added_samples] = weight
         self.n_added_samples += 1
 
-    def _solve(self):
-        pass
+    def _solve(self, l1_reg):
+        eyAdj = self.linkf(self.y_pred) - self.base_val
+        self.eyAdj = eyAdj
+        nonzero_inds = np.arange(self.n_features)
+        if len(nonzero_inds) == 0:
+            return np.zeros(self.n_features)
+
+        # Eliminate one variable with the constraint that all features sum to the output
+        eyAdj2 = eyAdj - self.subsets[:, nonzero_inds[-1]] * (
+            self.link.f(self.fx[0]) - self.base_val
+        )
+        etmp = np.transpose(
+            np.transpose(self.subsets[:, nonzero_inds[:-1]]) - self.subsets[:, nonzero_inds[-1]]
+        )
+
+        # solve a weighted least squares equation to estimate phi
+        tmp = np.transpose(np.transpose(etmp) * np.transpose(self.kernel_weights))
+        etmp_dot = np.dot(np.transpose(tmp), etmp)
+        try:
+            tmp2 = np.linalg.inv(etmp_dot)
+        except np.linalg.LinAlgError:
+            tmp2 = np.linalg.pinv(etmp_dot)
+        w = np.dot(tmp2, np.dot(np.transpose(tmp), eyAdj2))
+        phi = np.zeros(self.n_features)
+        phi[nonzero_inds[:-1]] = w
+        phi[nonzero_inds[-1]] = (self.link.f(self.fx[0]) - self.base_val) - sum(w)
+
+        # clean up any rounding errors
+        for i in range(self.n_features):
+            if np.abs(phi[i]) < 1e-10:
+                phi[i] = 0
+
+        return phi
