@@ -86,7 +86,9 @@ class KernelExplainer(BaseExplainer):
                 )
                 n_workers = cpu_count or 1
             # Splitting data for multi-processing
-            subsets_list = np.array_split(self.subsets, n_workers)
+            subsets_list = np.array_split(
+                self.subsets, n_workers * 5
+            )  # TODO: Setting the appropriate number of data splits
             with ProcessPoolExecutor(max_workers=n_workers) as executor:
                 futures = [
                     executor.submit(
