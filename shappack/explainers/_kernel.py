@@ -72,7 +72,7 @@ class KernelExplainer(BaseExplainer):
             raise ValueError('`characteristic_func` should be "kernelshap" or callable function')
 
         if n_workers == 1:
-            self.y_pred = self.characteristic_func(instance, self.subsets, self.model)
+            self.y_pred = self.characteristic_func(instance, self.subsets, self.model, self.data)
         else:
             cpu_count = os.cpu_count()
             if n_workers < -1:
@@ -89,11 +89,13 @@ class KernelExplainer(BaseExplainer):
             subsets_list = np.array_split(self.subsets, n_workers)
             with ProcessPoolExecutor(max_workers=n_workers) as executor:
                 futures = [
-                    executor.submit(self.characteristic_func, instance, subsets, self.model)
+                    executor.submit(
+                        self.characteristic_func, instance, subsets, self.model, self.data
+                    )
                     for subsets in subsets_list
                 ]
                 results = [f.result() for f in futures]
-            self.y_pred = results
+            self.y_pred = np.hstack(results)
 
             # 3. Solving Weighted Least Squares
         return
