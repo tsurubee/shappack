@@ -208,6 +208,7 @@ class KernelExplainer(BaseExplainer):
         self.n_added_samples += 1
 
     def _solve(self, l1_reg):
+        # TODO: Support Lasso model and l1_reg argument
         eyAdj = self.linkf(self.y_pred) - self.base_val
         self.eyAdj = eyAdj
         nonzero_inds = np.arange(self.n_features)
