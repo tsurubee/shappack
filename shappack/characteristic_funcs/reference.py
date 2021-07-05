@@ -13,5 +13,5 @@ def kernel_shap(instance, subsets, model, data):
     # Computing the expected value of the model's predictions for the background dataset
     ey = np.zeros(n_subsets)
     for i in range(n_subsets):
-        ey[i] = np.mean(model_preds[i : i + n_data])
+        ey[i] = np.mean(model_preds[i * n_data : i * n_data + n_data])
     return ey
