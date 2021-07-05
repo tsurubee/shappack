@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-DEV_REQUIRES = ["black", "shap"]
+DEV_REQUIRES = ["black", "shap", "jupyterlab"]
 
 setup(
     name="shappack",
