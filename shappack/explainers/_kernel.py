@@ -22,7 +22,7 @@ class KernelExplainer(BaseExplainer):
         if self.n_data > 100:
             warnings.warn(
                 "Using "
-                + str(len(self.n_data))
+                + str(self.n_data)
                 + " background data samples could cause slower run times.",
                 UserWarning,
             )
