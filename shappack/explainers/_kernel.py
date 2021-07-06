@@ -29,8 +29,8 @@ class KernelExplainer(BaseExplainer):
 
         # Compute base value (=E[f(x)]=phi_0)
         out_val = self.model(self.data)
-        self.base_val = np.sum(self.linkf(out_val)) / self.n_data
-        # TODO: Support classification problem outputs
+        self.base_val = self.linkf(np.sum(out_val, 0) / self.n_data)
+        self.out_dim = 1 if len(out_val.shape) == 1 else out_val.shape[1]
 
     def shap_values(
         self, X, n_samples="auto", l1_reg="auto", n_workers=1, characteristic_func="kernelshap"
