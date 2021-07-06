@@ -54,7 +54,7 @@ class KernelExplainer(BaseExplainer):
 
     def _shap_values(self, instance, n_samples, l1_reg, n_workers, characteristic_func):
         # Compute f(x), the predicted value for instance
-        self.fx = self.model(instance)
+        self.fx = self.model(instance)[0]
         # If there is only one feature, it has all the effects
         if self.n_features == 1:
             phi = self.link.f(self.fx) - self.link.f(self.base_val)
@@ -95,10 +95,18 @@ class KernelExplainer(BaseExplainer):
                     for subsets in subsets_list
                 ]
                 results = [f.result() for f in futures]
-            self.y_pred = np.hstack(results)
+            if len(results[0].shape) == 1:
+                self.y_pred = np.hstack(results)
+            else:
+                self.y_pred = np.vstack(results)
 
         # 3. Solving Weighted Least Squares
-        phi = self._solve(l1_reg)
+        if self.out_dim == 1:
+            phi = self._solve(l1_reg)
+        else:
+            phi = np.zeros((self.out_dim, self.n_features))
+            for dim in range(self.out_dim):
+                phi[dim, :] = self._solve(l1_reg, dim)
 
         return phi
 
@@ -132,7 +140,10 @@ class KernelExplainer(BaseExplainer):
             if subset_size <= n_paired_subset_size:
                 n_sampling_subsets *= 2
             # If there are enough number of remaining samples to sample n_sampling_subsets
-            if n_remaining_samples * remaining_weight_vector[subset_size - 1] > n_sampling_subsets:
+            if (
+                n_remaining_samples * remaining_weight_vector[subset_size - 1] / n_sampling_subsets
+                >= 1.0 - 1e-8
+            ):
                 n_full_subsets += 1
                 n_remaining_samples -= n_sampling_subsets
                 if remaining_weight_vector[subset_size - 1] < 1.0:
@@ -208,18 +219,25 @@ class KernelExplainer(BaseExplainer):
         self.kernel_weights[self.n_added_samples] = weight
         self.n_added_samples += 1
 
-    def _solve(self, l1_reg):
+    def _solve(self, l1_reg, dim=None):
         # TODO: Support Lasso model and l1_reg argument
-        eyAdj = self.linkf(self.y_pred) - self.base_val
-        self.eyAdj = eyAdj
+        if dim is None:
+            ey_diff = self.linkf(self.y_pred) - self.base_val
+        else:
+            ey_diff = self.linkf(self.y_pred[:, dim]) - self.base_val[dim]
         nonzero_inds = np.arange(self.n_features)
         if len(nonzero_inds) == 0:
             return np.zeros(self.n_features)
 
         # Eliminate one variable with the constraint that all features sum to the output
-        eyAdj2 = eyAdj - self.subsets[:, nonzero_inds[-1]] * (
-            self.link.f(self.fx[0]) - self.base_val
-        )
+        if dim is None:
+            ey_diff2 = ey_diff - self.subsets[:, nonzero_inds[-1]] * (
+                self.link.f(self.fx) - self.base_val
+            )
+        else:
+            ey_diff2 = ey_diff - self.subsets[:, nonzero_inds[-1]] * (
+                self.link.f(self.fx[dim]) - self.base_val[dim]
+            )
         etmp = np.transpose(
             np.transpose(self.subsets[:, nonzero_inds[:-1]]) - self.subsets[:, nonzero_inds[-1]]
         )
@@ -231,10 +249,13 @@ class KernelExplainer(BaseExplainer):
             tmp2 = np.linalg.inv(etmp_dot)
         except np.linalg.LinAlgError:
             tmp2 = np.linalg.pinv(etmp_dot)
-        w = np.dot(tmp2, np.dot(np.transpose(tmp), eyAdj2))
+        w = np.dot(tmp2, np.dot(np.transpose(tmp), ey_diff2))
         phi = np.zeros(self.n_features)
         phi[nonzero_inds[:-1]] = w
-        phi[nonzero_inds[-1]] = (self.link.f(self.fx[0]) - self.base_val) - sum(w)
+        if dim is None:
+            phi[nonzero_inds[-1]] = (self.link.f(self.fx) - self.base_val) - sum(w)
+        else:
+            phi[nonzero_inds[-1]] = (self.link.f(self.fx[dim]) - self.base_val[dim]) - sum(w)
 
         # clean up any rounding errors
         for i in range(self.n_features):
