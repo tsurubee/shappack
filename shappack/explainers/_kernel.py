@@ -28,9 +28,17 @@ class KernelExplainer(BaseExplainer):
             )
 
         # Compute base value (=E[f(x)]=phi_0)
-        out_val = self.model(self.data)
+        out_val = np.squeeze(self.model(self.data))
         self.base_val = self.linkf(np.sum(out_val, 0) / self.n_data)
-        self.out_dim = 1 if len(out_val.shape) == 1 else out_val.shape[1]
+        if len(self.base_val.shape) == 0:
+            self.base_val = np.array([self.base_val])
+
+        if len(out_val.shape) == 1:
+            self.out_dim = 1
+        elif len(out_val.shape) == 2:
+            self.out_dim = out_val.shape[1]
+        else:
+            raise ValueError("The output of model must be a vector or two-dimensional matrix")
 
     def shap_values(
         self, X, n_samples="auto", l1_reg="auto", n_workers=1, characteristic_func="kernelshap"
@@ -50,11 +58,15 @@ class KernelExplainer(BaseExplainer):
             # TODO: Support multiple instances
             pass
         else:
-            raise ValueError("The instances X to be interpreted must be a vector or 2D matrix")
+            raise ValueError(
+                "The instances X to be interpreted must be a vector or two-dimensional matrix"
+            )
 
     def _shap_values(self, instance, n_samples, l1_reg, n_workers, characteristic_func):
         # Compute f(x), the predicted value for instance
-        self.fx = self.model(instance)[0]
+        self.fx = np.squeeze(self.model(instance))
+        if len(self.fx.shape) == 0:
+            self.fx = np.array([self.fx])
         # If there is only one feature, it has all the effects
         if self.n_features == 1:
             phi = self.link.f(self.fx) - self.link.f(self.base_val)
@@ -95,20 +107,17 @@ class KernelExplainer(BaseExplainer):
                     for subsets in subsets_list
                 ]
                 results = [f.result() for f in futures]
-            if len(results[0].shape) == 1:
-                self.y_pred = np.hstack(results)
+            if self.out_dim == 1:
+                self.y_pred = np.hstack(results).reshape((-1, 1))
             else:
                 self.y_pred = np.vstack(results)
 
         # 3. Solving Weighted Least Squares
-        if self.out_dim == 1:
-            phi = self._solve(l1_reg)
-        else:
-            phi = np.zeros((self.out_dim, self.n_features))
-            for dim in range(self.out_dim):
-                phi[dim, :] = self._solve(l1_reg, dim)
+        phi = np.zeros((self.out_dim, self.n_features))
+        for dim in range(self.out_dim):
+            phi[dim, :] = self._solve(dim, l1_reg)
 
-        return phi
+        return np.squeeze(phi)
 
     def _sampling(self, n_samples):
         if n_samples == "auto":
@@ -219,25 +228,17 @@ class KernelExplainer(BaseExplainer):
         self.kernel_weights[self.n_added_samples] = weight
         self.n_added_samples += 1
 
-    def _solve(self, l1_reg, dim=None):
+    def _solve(self, dim, l1_reg):
         # TODO: Support Lasso model and l1_reg argument
-        if dim is None:
-            ey_diff = self.linkf(self.y_pred) - self.base_val
-        else:
-            ey_diff = self.linkf(self.y_pred[:, dim]) - self.base_val[dim]
+        ey_diff = self.linkf(self.y_pred[:, dim]) - self.base_val[dim]
         nonzero_inds = np.arange(self.n_features)
         if len(nonzero_inds) == 0:
             return np.zeros(self.n_features)
 
         # Eliminate one variable with the constraint that all features sum to the output
-        if dim is None:
-            ey_diff2 = ey_diff - self.subsets[:, nonzero_inds[-1]] * (
-                self.link.f(self.fx) - self.base_val
-            )
-        else:
-            ey_diff2 = ey_diff - self.subsets[:, nonzero_inds[-1]] * (
-                self.link.f(self.fx[dim]) - self.base_val[dim]
-            )
+        ey_diff2 = ey_diff - self.subsets[:, nonzero_inds[-1]] * (
+            self.link.f(self.fx[dim]) - self.base_val[dim]
+        )
         etmp = np.transpose(
             np.transpose(self.subsets[:, nonzero_inds[:-1]]) - self.subsets[:, nonzero_inds[-1]]
         )
@@ -252,10 +253,7 @@ class KernelExplainer(BaseExplainer):
         w = np.dot(tmp2, np.dot(np.transpose(tmp), ey_diff2))
         phi = np.zeros(self.n_features)
         phi[nonzero_inds[:-1]] = w
-        if dim is None:
-            phi[nonzero_inds[-1]] = (self.link.f(self.fx) - self.base_val) - sum(w)
-        else:
-            phi[nonzero_inds[-1]] = (self.link.f(self.fx[dim]) - self.base_val[dim]) - sum(w)
+        phi[nonzero_inds[-1]] = (self.link.f(self.fx[dim]) - self.base_val[dim]) - sum(w)
 
         # clean up any rounding errors
         for i in range(self.n_features):
