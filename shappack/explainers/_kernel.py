@@ -107,6 +107,9 @@ class KernelExplainer(BaseExplainer):
             self.n_samples = 2 * self.n_features + 2 ** 11
         else:
             self.n_samples = n_samples
+        max_n_samples = 2 ** self.n_features - 2
+        if self.n_samples > max_n_samples:
+            self.n_samples = max_n_samples
         self.subsets = np.zeros((self.n_samples, self.n_features))
         self.kernel_weights = np.zeros(self.n_samples)
         self.n_added_samples = 0
