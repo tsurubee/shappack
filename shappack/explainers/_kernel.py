@@ -85,6 +85,8 @@ class KernelExplainer(BaseExplainer):
 
         if n_workers == 1:
             self.y_pred = self.characteristic_func(instance, self.subsets, self.model, self.data)
+            if self.out_dim == 1:
+                self.y_pred = self.y_pred.reshape((-1, 1))
         else:
             cpu_count = os.cpu_count()
             if n_workers < -1:
