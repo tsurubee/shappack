@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-DEV_REQUIRES = ["black", "shap", "matplotlib", "jupyterlab"]
+DEV_REQUIRES = ["black", "shap", "matplotlib", "jupyterlab", "pytest"]
 
 setup(
     name="shappack",
