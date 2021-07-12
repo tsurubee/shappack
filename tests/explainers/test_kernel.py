@@ -1,4 +1,3 @@
-import pytest
 import shappack
 import numpy as np
 
