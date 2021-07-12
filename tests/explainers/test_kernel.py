@@ -6,6 +6,7 @@ def test_shap_values_regression(boston_data):
     explainer = shappack.KernelExplainer(model.predict, X_train[0:10])
     shap_value = explainer.shap_values(X_test[1])
     assert len(shap_value) == X_train.shape[1]
+    assert np.round(np.sum(shap_value), 2) == np.round(explainer.fx - explainer.base_val, 2)
 
 def test_shap_values_classification(iris_data):
     X_train, X_test, y_train, model = iris_data
@@ -19,6 +20,7 @@ def test_shap_values_multiprocessing(boston_data):
     explainer = shappack.KernelExplainer(model.predict, X_train[0:10])
     shap_value = explainer.shap_values(X_test[15], n_workers=-1)
     assert len(shap_value) == X_train.shape[1]
+    assert np.round(np.sum(shap_value), 2) == np.round(explainer.fx - explainer.base_val, 2)
 
 def test_shap_values_own_characteristic_func(boston_data):
     X_train, X_test, y_train, model = boston_data
