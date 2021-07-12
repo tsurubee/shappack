@@ -1,6 +1,8 @@
 from setuptools import setup, find_packages
 
-DEV_REQUIRES = ["black", "shap", "matplotlib", "jupyterlab", "pytest"]
+TEST_REQUIRES = ["black", "pytest"]
+DEV_REQUIRES = TEST_REQUIRES + ["shap", "matplotlib", "jupyterlab"]
+
 
 setup(
     name="shappack",
@@ -11,5 +13,6 @@ setup(
     install_requires=["numpy", "pandas", "sklearn", "scipy"],
     extras_require={
         "dev": DEV_REQUIRES,
+        "test": TEST_REQUIRES,
     },
 )
