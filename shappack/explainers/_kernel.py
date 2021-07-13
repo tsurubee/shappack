@@ -30,13 +30,26 @@ class KernelExplainer(BaseExplainer):
             A generalized linear model link to connect the feature importance values to the model output
     """
 
-    def __init__(self, model: Any, data: Union[List, np.ndarray], link: str = "identity") -> None:
+    def __init__(
+        self,
+        model: Any,
+        data: Union[List, np.ndarray],
+        link: str = "identity",
+        feature_names: Union[List, np.ndarray] = None,
+    ) -> None:
         self.model = model
         self.data = self.convert_to_nparray(data)
         self.link = convert_to_link(link)
         self.linkf = np.vectorize(self.link.f)
         self.n_data = self.data.shape[0]
         self.n_features = self.data.shape[1]
+        if feature_names is not None:
+            feature_names = self.convert_to_nparray(feature_names)
+            if len(feature_names) != self.n_features:
+                raise ValueError(
+                    "The length of `feature_names` must be the same as the number of features"
+                )
+            self.feature_names = feature_names
 
         if self.n_data > 100:
             warnings.warn(
