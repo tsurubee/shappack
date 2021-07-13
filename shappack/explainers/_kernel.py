@@ -5,13 +5,14 @@ import itertools
 import numpy as np
 from scipy.special import binom
 from concurrent.futures import ProcessPoolExecutor
+from typing import Any, List, Union, Callable
 from ._base import BaseExplainer
 from ..utils._link import convert_to_link
 from ..characteristic_funcs.reference import kernel_shap
 
 
 class KernelExplainer(BaseExplainer):
-    def __init__(self, model, data, link="identity"):
+    def __init__(self, model: Any, data: Union[List, np.ndarray], link: str = "identity") -> None:
         self.model = model
         self.data = self.convert_to_nparray(data)
         self.link = convert_to_link(link)
@@ -41,8 +42,15 @@ class KernelExplainer(BaseExplainer):
             raise ValueError("The output of model must be a vector or two-dimensional matrix")
 
     def shap_values(
-        self, X, n_samples="auto", l1_reg="auto", n_workers=1, characteristic_func="kernelshap"
-    ):
+        self,
+        X: Union[List, np.ndarray],
+        n_samples: Union[str, int] = "auto",
+        l1_reg: Union[str, int] = "auto",
+        n_workers: int = 1,
+        characteristic_func: Union[
+            str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
+        ] = "kernelshap",
+    ) -> np.ndarray:
         X = self.convert_to_nparray(X)
         if len(X.shape) == 1:
             instance = X.reshape(1, -1)
@@ -62,7 +70,16 @@ class KernelExplainer(BaseExplainer):
                 "The instances X to be interpreted must be a vector or two-dimensional matrix"
             )
 
-    def _shap_values(self, instance, n_samples, l1_reg, n_workers, characteristic_func):
+    def _shap_values(
+        self,
+        instance: np.ndarray,
+        n_samples: Union[str, int],
+        l1_reg: Union[str, int],
+        n_workers: int,
+        characteristic_func: Union[
+            str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
+        ],
+    ) -> np.ndarray:
         # Compute f(x), the predicted value for instance
         self.fx = np.squeeze(self.model(instance))
         if len(self.fx.shape) == 0:
@@ -121,7 +138,7 @@ class KernelExplainer(BaseExplainer):
 
         return np.squeeze(phi)
 
-    def _sampling(self, n_samples):
+    def _sampling(self, n_samples: Union[str, int]) -> None:
         if n_samples == "auto":
             self.n_samples = 2 * self.n_features + 2 ** 11
         else:
@@ -225,12 +242,12 @@ class KernelExplainer(BaseExplainer):
                 weight_left / self.kernel_weights[n_fixed_samples:].sum()
             )
 
-    def _add_sample(self, binary_vec, weight):
+    def _add_sample(self, binary_vec: np.ndarray, weight: float) -> None:
         self.subsets[self.n_added_samples, :] = binary_vec
         self.kernel_weights[self.n_added_samples] = weight
         self.n_added_samples += 1
 
-    def _solve(self, dim, l1_reg):
+    def _solve(self, dim: int, l1_reg: Union[str, int]) -> np.ndarray:
         # TODO: Support Lasso model and l1_reg argument
         ey_diff = self.linkf(self.y_pred[:, dim]) - self.base_val[dim]
         nonzero_inds = np.arange(self.n_features)

@@ -1,11 +1,12 @@
 import numpy as np
+from typing import List, Union
 
 
 class BaseExplainer(object):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def convert_to_nparray(self, data):
+    def convert_to_nparray(self, data: Union[List, np.ndarray]) -> np.ndarray:
         if not isinstance(data, np.ndarray):
             return np.array(data)
         else:

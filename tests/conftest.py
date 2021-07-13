@@ -1,12 +1,14 @@
 import pytest
+import numpy as np
 from sklearn.datasets import load_boston, load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR, SVC
+from typing import Tuple
 
 
 @pytest.fixture()
-def boston_data():
+def boston_data() -> Tuple[np.ndarray, np.ndarray, np.ndarray, "sklearn.svm.SVR"]:
     boston = load_boston()
     X_train, X_test, y_train, _ = train_test_split(boston["data"], boston["target"], test_size=0.2)
     scaler = StandardScaler()
@@ -16,11 +18,11 @@ def boston_data():
     model.fit(X_train, y_train)
     return (X_train, X_test, y_train, model)
 
+
 @pytest.fixture()
-def iris_data():
+def iris_data() -> Tuple[np.ndarray, np.ndarray, np.ndarray, "sklearn.svm.SVC"]:
     iris = load_iris()
     X_train, X_test, y_train, _ = train_test_split(iris["data"], iris["target"], test_size=0.2)
     model = SVC(kernel="rbf", probability=True)
     model.fit(X_train, y_train)
     return (X_train, X_test, y_train, model)
-

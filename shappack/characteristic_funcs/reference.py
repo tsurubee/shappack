@@ -1,7 +1,10 @@
 import numpy as np
+from typing import Any
 
 
-def kernel_shap(instance, subsets, model, data):
+def kernel_shap(
+    instance: np.ndarray, subsets: np.ndarray, model: Any, data: np.ndarray
+) -> np.ndarray:
     n_subsets = subsets.shape[0]
     n_data = data.shape[0]
     synth_data = np.tile(data, (n_subsets, 1))
