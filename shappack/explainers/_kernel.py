@@ -81,7 +81,7 @@ class KernelExplainer(BaseExplainer):
         characteristic_func: Union[
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ] = "kernelshap",
-        skip_features: Union[List, np.ndarray] = None,
+        skip_features: List[Union[str, int]] = None,
     ) -> np.ndarray:
         """Compute SHAP values
 
@@ -136,7 +136,7 @@ class KernelExplainer(BaseExplainer):
         characteristic_func: Union[
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ],
-        skip_features: Union[List, np.ndarray],
+        skip_features: List[Union[str, int]],
     ) -> np.ndarray:
         # Compute f(x), the predicted value for instance
         self.fx = np.squeeze(self.model(instance))
@@ -146,6 +146,19 @@ class KernelExplainer(BaseExplainer):
         if self.n_features == 1:
             phi = self.link.f(self.fx) - self.link.f(self.base_val)
             return phi
+
+        self.n_skip_features = 0
+        if skip_features is not None:
+            self.n_skip_features = len(skip_features)
+            self.skip_idx = np.zeros(self.n_skip_features, dtype=int)
+            for i, feature in enumerate(skip_features):
+                if isinstance(feature, str):
+                    self.skip_idx[i] = np.where(self.feature_names == feature)[0][0]
+                elif isinstance(feature, int):
+                    self.skip_idx[i] = feature
+                else:
+                    raise ValueError("The elements of `skip_features` must be `str` or `int`.")
+            self.skip_idx = np.sort(self.skip_idx)
 
         # 1. Sampling Subsets (Set of binary vectors)
         self._sampling(n_samples)
