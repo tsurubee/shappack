@@ -81,6 +81,7 @@ class KernelExplainer(BaseExplainer):
         characteristic_func: Union[
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ] = "kernelshap",
+        skip_features: Union[List, np.ndarray] = None,
     ) -> np.ndarray:
         """Compute SHAP values
 
@@ -99,6 +100,9 @@ class KernelExplainer(BaseExplainer):
                Function that returns the output of the model for each subset.
                In the default case, the original function of Kernel SHAP is executed.
                Users can incorporate their own functions.
+            skip_features:
+               If there are features that skips the calculation of the SHAP value,
+               specify its index or name.
 
         Returns:
             Array of calculated SHAP values
@@ -112,7 +116,7 @@ class KernelExplainer(BaseExplainer):
                     "The number of features in instance X and the background dataset do not match."
                 )
             shap_values = self._shap_values(
-                instance, n_samples, l1_reg, n_workers, characteristic_func
+                instance, n_samples, l1_reg, n_workers, characteristic_func, skip_features
             )
             return shap_values
         elif len(X.shape) == 2:
@@ -132,6 +136,7 @@ class KernelExplainer(BaseExplainer):
         characteristic_func: Union[
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ],
+        skip_features: Union[List, np.ndarray],
     ) -> np.ndarray:
         # Compute f(x), the predicted value for instance
         self.fx = np.squeeze(self.model(instance))
