@@ -5,6 +5,21 @@ from typing import Any
 def kernel_shap(
     instance: np.ndarray, subsets: np.ndarray, model: Any, data: np.ndarray
 ) -> np.ndarray:
+    """Original characteristic function of KernelSHAP
+
+    Args:
+        instance:
+            Data to be interpreted
+        subsets:
+            Array of subsets represented by binary vectors
+        model:
+            Prediction function of the machine learning model
+        data:
+            Background dataset used as reference values
+
+    Returns:
+        Output of the machine learning model for each subset represented by binary vector
+    """
     n_subsets = subsets.shape[0]
     n_data = data.shape[0]
     synth_data = np.tile(data, (n_subsets, 1))

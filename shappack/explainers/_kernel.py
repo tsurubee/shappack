@@ -12,6 +12,24 @@ from ..characteristic_funcs.reference import kernel_shap
 
 
 class KernelExplainer(BaseExplainer):
+    """Using Kernel SHAP to interpret the output of a machine learning model
+
+    The model-agnostic Kernel SHAP estimates the SHAP value for any model using weighted linear regression.
+    For more information on Kernel SHAP, see the original paper below.
+    S. Lundberg and S. I. Lee, A Unified Approach to Interpreting Model Predictions, Advances in
+    Neural Information Processing Systems 30(NIPS 2017), 2017.
+
+    Args:
+        model:
+            Prediction function of the machine learning model
+        data:
+            Background dataset. How to use the background dataset depends on the implementation of
+            the characteristic function. In the original Kernel SHAP, the values of the background dataset
+            are replaced as references to simulate "missing" features.
+        link:
+            A generalized linear model link to connect the feature importance values to the model output
+    """
+
     def __init__(self, model: Any, data: Union[List, np.ndarray], link: str = "identity") -> None:
         self.model = model
         self.data = self.convert_to_nparray(data)
@@ -51,6 +69,28 @@ class KernelExplainer(BaseExplainer):
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ] = "kernelshap",
     ) -> np.ndarray:
+        """Compute SHAP values
+
+        Args:
+            X:
+                Data to be interpreted
+            n_samples:
+                Number of subsets to be sampled. The default value of "auto" uses
+                `n_samples = 2 * (Number of features) + 2048`.
+            l1_reg:
+                The l1 regularization to use for feature selection.
+            n_workers:
+                Number of processes used in the computation.
+                `-1` means using all processors.
+            characteristic_func:
+               Function that returns the output of the model for each subset.
+               In the default case, the original function of Kernel SHAP is executed.
+               Users can incorporate their own functions.
+
+        Returns:
+            Array of calculated SHAP values
+
+        """
         X = self.convert_to_nparray(X)
         if len(X.shape) == 1:
             instance = X.reshape(1, -1)
