@@ -159,6 +159,7 @@ class KernelExplainer(BaseExplainer):
                 else:
                     raise ValueError("The elements of `skip_features` must be `str` or `int`.")
             self.skip_idx = np.sort(self.skip_idx)
+        self.n_features_calc = self.n_features - self.n_skip_features
 
         # 1. Sampling Subsets (Set of binary vectors)
         self._sampling(n_samples)
@@ -171,8 +172,15 @@ class KernelExplainer(BaseExplainer):
         else:
             raise ValueError('`characteristic_func` should be "kernelshap" or callable function')
 
+        # If `skip_features` is specified, reconstruct subsets with the features to be skipped set to 1
+        # for input to the model.
+        subsets_model = self.subsets
+        if self.n_skip_features >= 1:
+            for i in self.skip_idx:
+                subsets_model = np.insert(subsets_model, i, 1, axis=1)
+
         if n_workers == 1:
-            self.y_pred = self.characteristic_func(instance, self.subsets, self.model, self.data)
+            self.y_pred = self.characteristic_func(instance, subsets_model, self.model, self.data)
             if self.out_dim == 1:
                 self.y_pred = self.y_pred.reshape((-1, 1))
         else:
@@ -188,7 +196,7 @@ class KernelExplainer(BaseExplainer):
                 )
                 n_workers = cpu_count or 1
             # Splitting data for multi-processing
-            subsets_list = np.array_split(self.subsets, n_workers)
+            subsets_list = np.array_split(subsets_model, n_workers)
             with ProcessPoolExecutor(max_workers=n_workers) as executor:
                 futures = [
                     executor.submit(
@@ -203,7 +211,7 @@ class KernelExplainer(BaseExplainer):
                 self.y_pred = np.vstack(results)
 
         # 3. Solving Weighted Least Squares
-        phi = np.zeros((self.out_dim, self.n_features))
+        phi = np.zeros((self.out_dim, self.n_features_calc))
         for dim in range(self.out_dim):
             phi[dim, :] = self._solve(dim, l1_reg)
 
@@ -211,20 +219,20 @@ class KernelExplainer(BaseExplainer):
 
     def _sampling(self, n_samples: Union[str, int]) -> None:
         if n_samples == "auto":
-            self.n_samples = 2 * self.n_features + 2 ** 11
+            self.n_samples = 2 * self.n_features_calc + 2 ** 11
         else:
             self.n_samples = n_samples
-        max_n_samples = 2 ** self.n_features - 2
+        max_n_samples = 2 ** self.n_features_calc - 2
         if self.n_samples > max_n_samples:
             self.n_samples = max_n_samples
-        self.subsets = np.zeros((self.n_samples, self.n_features))
+        self.subsets = np.zeros((self.n_samples, self.n_features_calc))
         self.kernel_weights = np.zeros(self.n_samples)
         self.n_added_samples = 0
-        n_subset_size = np.int(np.ceil((self.n_features - 1) / 2.0))
-        n_paired_subset_size = np.int(np.floor((self.n_features - 1) / 2.0))
+        n_subset_size = np.int(np.ceil((self.n_features_calc - 1) / 2.0))
+        n_paired_subset_size = np.int(np.floor((self.n_features_calc - 1) / 2.0))
         weight_vector = np.array(
             [
-                (self.n_features - 1.0) / (i * (self.n_features - i))
+                (self.n_features_calc - 1.0) / (i * (self.n_features_calc - i))
                 for i in range(1, n_subset_size + 1)
             ]
         )
@@ -233,9 +241,9 @@ class KernelExplainer(BaseExplainer):
         remaining_weight_vector = copy.copy(weight_vector)
         n_remaining_samples = self.n_samples
         n_full_subsets = 0
-        binary_vec = np.zeros(self.n_features)
+        binary_vec = np.zeros(self.n_features_calc)
         for subset_size in range(1, n_subset_size + 1):
-            n_sampling_subsets = binom(self.n_features, subset_size)
+            n_sampling_subsets = binom(self.n_features_calc, subset_size)
             if subset_size <= n_paired_subset_size:
                 n_sampling_subsets *= 2
             # If there are enough number of remaining samples to sample n_sampling_subsets
@@ -247,11 +255,11 @@ class KernelExplainer(BaseExplainer):
                 n_remaining_samples -= n_sampling_subsets
                 if remaining_weight_vector[subset_size - 1] < 1.0:
                     remaining_weight_vector /= 1 - remaining_weight_vector[subset_size - 1]
-                weight = weight_vector[subset_size - 1] / binom(self.n_features, subset_size)
+                weight = weight_vector[subset_size - 1] / binom(self.n_features_calc, subset_size)
                 if subset_size <= n_paired_subset_size:
                     weight /= 2.0
                 for idx in itertools.combinations(
-                    np.arange(self.n_features, dtype="int64"), subset_size
+                    np.arange(self.n_features_calc, dtype="int64"), subset_size
                 ):
                     binary_vec[:] = 0.0
                     binary_vec[np.array(idx, dtype="int64")] = 1.0
@@ -281,7 +289,7 @@ class KernelExplainer(BaseExplainer):
                 idx = idx_set[idx_set_pos]
                 idx_set_pos += 1
                 subset_size = idx + n_full_subsets + 1
-                binary_vec[np.random.permutation(self.n_features)[:subset_size]] = 1.0
+                binary_vec[np.random.permutation(self.n_features_calc)[:subset_size]] = 1.0
 
                 # only add the sample if we have not seen it before, otherwise just
                 # increment a previous sample's weight
@@ -321,9 +329,9 @@ class KernelExplainer(BaseExplainer):
     def _solve(self, dim: int, l1_reg: Union[str, int]) -> np.ndarray:
         # TODO: Support Lasso model and l1_reg argument
         ey_diff = self.linkf(self.y_pred[:, dim]) - self.base_val[dim]
-        nonzero_inds = np.arange(self.n_features)
+        nonzero_inds = np.arange(self.n_features_calc)
         if len(nonzero_inds) == 0:
-            return np.zeros(self.n_features)
+            return np.zeros(self.n_features_calc)
 
         # Eliminate one variable with the constraint that all features sum to the output
         ey_diff2 = ey_diff - self.subsets[:, nonzero_inds[-1]] * (
@@ -341,12 +349,12 @@ class KernelExplainer(BaseExplainer):
         except np.linalg.LinAlgError:
             tmp2 = np.linalg.pinv(etmp_dot)
         w = np.dot(tmp2, np.dot(np.transpose(tmp), ey_diff2))
-        phi = np.zeros(self.n_features)
+        phi = np.zeros(self.n_features_calc)
         phi[nonzero_inds[:-1]] = w
         phi[nonzero_inds[-1]] = (self.link.f(self.fx[dim]) - self.base_val[dim]) - sum(w)
 
         # clean up any rounding errors
-        for i in range(self.n_features):
+        for i in range(self.n_features_calc):
             if np.abs(phi[i]) < 1e-10:
                 phi[i] = 0
 
