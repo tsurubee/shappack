@@ -225,7 +225,7 @@ class KernelExplainer(BaseExplainer):
         max_n_samples = 2 ** self.n_features_calc - 2
         if self.n_samples > max_n_samples:
             self.n_samples = max_n_samples
-        self.subsets = np.zeros((self.n_samples, self.n_features_calc))
+        self.subsets = np.zeros((self.n_samples, self.n_features_calc), dtype=np.int8)
         self.kernel_weights = np.zeros(self.n_samples)
         self.n_added_samples = 0
         n_subset_size = np.int(np.ceil((self.n_features_calc - 1) / 2.0))
@@ -241,7 +241,7 @@ class KernelExplainer(BaseExplainer):
         remaining_weight_vector = copy.copy(weight_vector)
         n_remaining_samples = self.n_samples
         n_full_subsets = 0
-        binary_vec = np.zeros(self.n_features_calc)
+        binary_vec = np.zeros(self.n_features_calc, dtype=np.int8)
         for subset_size in range(1, n_subset_size + 1):
             n_sampling_subsets = binom(self.n_features_calc, subset_size)
             if subset_size <= n_paired_subset_size:
@@ -261,8 +261,8 @@ class KernelExplainer(BaseExplainer):
                 for idx in itertools.combinations(
                     np.arange(self.n_features_calc, dtype="int64"), subset_size
                 ):
-                    binary_vec[:] = 0.0
-                    binary_vec[np.array(idx, dtype="int64")] = 1.0
+                    binary_vec[:] = 0
+                    binary_vec[np.array(idx, dtype="int64")] = 1
                     self._add_sample(binary_vec, weight)
                     # Create a binary vector with inverted "0" and "1".
                     if subset_size <= n_paired_subset_size:
