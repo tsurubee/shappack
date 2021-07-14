@@ -126,12 +126,20 @@ class KernelExplainer(BaseExplainer):
                     "The number of features in instance X and the background dataset do not match."
                 )
             shap_values_all = []
+            skip_sampling = False
             for instance in X:
                 instance = instance.reshape(1, -1)
                 shap_values = self._shap_values(
-                    instance, n_samples, l1_reg, n_workers, characteristic_func, skip_features
+                    instance,
+                    n_samples,
+                    l1_reg,
+                    n_workers,
+                    characteristic_func,
+                    skip_features,
+                    skip_sampling,
                 )
                 shap_values_all.append(shap_values)
+                skip_sampling = True
             return np.array(shap_values_all)
         else:
             raise ValueError(
@@ -148,6 +156,7 @@ class KernelExplainer(BaseExplainer):
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ],
         skip_features: Optional[List[Union[str, int]]],
+        skip_sampling: bool = False,
     ) -> np.ndarray:
         # Compute f(x), the predicted value for instance
         self.fx = np.squeeze(self.model(instance))
@@ -173,7 +182,8 @@ class KernelExplainer(BaseExplainer):
         self.n_features_calc = self.n_features - self.n_skip_features
 
         # 1. Sampling Subsets (Set of binary vectors)
-        self._sampling(n_samples)
+        if not skip_sampling:
+            self._sampling(n_samples)
 
         # 2. Applying the Characteristic Function
         if callable(characteristic_func):
