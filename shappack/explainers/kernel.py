@@ -6,8 +6,8 @@ import numpy as np
 from scipy.special import binom
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any, List, Union, Callable, Optional
-from ._base import BaseExplainer
-from ..utils._link import convert_to_link
+from .base import BaseExplainer
+from ..utils.link import convert_to_link
 from ..utils.docker import get_cpu_quota_within_docker
 from ..characteristic_funcs.reference import kernel_shap
 

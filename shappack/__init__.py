@@ -1,1 +1,1 @@
-from .explainers._kernel import KernelExplainer
+from .explainers.kernel import KernelExplainer
