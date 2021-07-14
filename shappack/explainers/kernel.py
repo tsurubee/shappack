@@ -66,7 +66,7 @@ class KernelExplainer(BaseExplainer):
         if len(self.base_val.shape) == 0:
             self.base_val = np.array([self.base_val])
 
-        if len(out_val.shape) == 1:
+        if len(out_val.shape) == 0 or 1:
             self.out_dim = 1
         elif len(out_val.shape) == 2:
             self.out_dim = out_val.shape[1]
