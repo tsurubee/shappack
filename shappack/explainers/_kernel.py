@@ -8,6 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from typing import Any, List, Union, Callable, Optional
 from ._base import BaseExplainer
 from ..utils._link import convert_to_link
+from ..utils.docker import get_cpu_quota_within_docker
 from ..characteristic_funcs.reference import kernel_shap
 
 
@@ -195,6 +196,15 @@ class KernelExplainer(BaseExplainer):
                     UserWarning,
                 )
                 n_workers = cpu_count or 1
+            # In order to handle the case of running in a Docker container,
+            # check the cgroup configuration for CPU limits
+            cpu_count_docker = get_cpu_quota_within_docker()
+            if cpu_count_docker is not None and cpu_count_docker < n_workers:
+                warnings.warn(
+                    f"n_workers={n_workers} is larger than Docker CPU limits={cpu_count_docker}.",
+                    UserWarning,
+                )
+                n_workers = cpu_count_docker
             # Splitting data for multi-processing
             subsets_list = np.array_split(subsets_model, n_workers)
             with ProcessPoolExecutor(max_workers=n_workers) as executor:
