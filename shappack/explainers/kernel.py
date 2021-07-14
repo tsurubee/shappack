@@ -121,8 +121,18 @@ class KernelExplainer(BaseExplainer):
             )
             return shap_values
         elif len(X.shape) == 2:
-            # TODO: Support multiple instances
-            pass
+            if X.shape[1] != self.n_features:
+                raise ValueError(
+                    "The number of features in instance X and the background dataset do not match."
+                )
+            shap_values_all = []
+            for instance in X:
+                instance = instance.reshape(1, -1)
+                shap_values = self._shap_values(
+                    instance, n_samples, l1_reg, n_workers, characteristic_func, skip_features
+                )
+                shap_values_all.append(shap_values)
+            return np.array(shap_values_all)
         else:
             raise ValueError(
                 "The instances X to be interpreted must be a vector or two-dimensional matrix"
