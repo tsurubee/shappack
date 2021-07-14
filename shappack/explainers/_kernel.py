@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 from scipy.special import binom
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any, List, Union, Callable
+from typing import Any, List, Union, Callable, Optional
 from ._base import BaseExplainer
 from ..utils._link import convert_to_link
 from ..characteristic_funcs.reference import kernel_shap
@@ -81,7 +81,7 @@ class KernelExplainer(BaseExplainer):
         characteristic_func: Union[
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ] = "kernelshap",
-        skip_features: List[Union[str, int]] = None,
+        skip_features: Optional[List[Union[str, int]]] = None,
     ) -> np.ndarray:
         """Compute SHAP values
 
@@ -136,7 +136,7 @@ class KernelExplainer(BaseExplainer):
         characteristic_func: Union[
             str, Callable[[np.ndarray, np.ndarray, Any, np.ndarray], np.ndarray]
         ],
-        skip_features: List[Union[str, int]],
+        skip_features: Optional[List[Union[str, int]]],
     ) -> np.ndarray:
         # Compute f(x), the predicted value for instance
         self.fx = np.squeeze(self.model(instance))
