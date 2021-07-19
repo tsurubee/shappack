@@ -31,8 +31,7 @@ model.fit(X_train, y_train)
 
 # Coumpute SHAP value
 explainer = shappack.KernelExplainer(model.predict, X_train[0:100])
-i = 1
-shap_value = explainer.shap_values(X_test[i], n_workers=-1)
+shap_value = explainer.shap_values(X_test[1], n_workers=-1)
 ```
 
 The usage of ShapPack is almost the same as that of [slundberg/shap](https://github.com/slundberg/shap).
