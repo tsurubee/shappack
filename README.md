@@ -101,7 +101,7 @@ def my_characteristic_func(instance, subsets, model, data):
         ey[i] = np.min(model_preds[i * n_data : i * n_data + n_data])
     return ey
 
-shap_value = explainer.shap_values(X_test_std[i], characteristic_func=my_characteristic_func, n_workers=-1)
+shap_value = explainer.shap_values(X_test_std[i], characteristic_func=my_characteristic_func)
 ```
 
 
