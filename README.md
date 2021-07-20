@@ -77,6 +77,7 @@ skip_features=["PTRATIO", "TAX"]
 shap_value = explainer.shap_values(X_test_std[i], skip_features=skip_features, n_workers=-1)
 feature_names = np.delete(boston.feature_names, explainer.skip_idx)
 x_test = np.delete(X_test[i], explainer.skip_idx)
+shap.force_plot(explainer.base_val[0], shap_value, x_test, feature_names)
 ```
 
 ### `characteristic_func`: Incorporate own characteristic function
@@ -101,7 +102,6 @@ def my_characteristic_func(instance, subsets, model, data):
     return ey
 
 shap_value = explainer.shap_values(X_test_std[i], characteristic_func=my_characteristic_func, n_workers=-1)
-shap.force_plot(explainer.base_val[0], shap_value, X_test[i], boston.feature_names)
 ```
 
 
