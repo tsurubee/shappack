@@ -14,24 +14,29 @@ $ pip install shappack
 
 ```python
 import shappack
+import numpy as np
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
+SEED = 123
+np.random.seed(SEED)
 
 # Prepare dataset
 boston = load_boston()
-X_train, X_test, y_train, y_test = train_test_split(boston["data"], boston["target"], test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(boston["data"], boston["target"], test_size=0.2, random_state=SEED)
 scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+X_train_std = scaler.fit_transform(X_train)
+X_test_std = scaler.transform(X_test)
+
 # Prepare model
-model = SVR(kernel="rbf")
-model.fit(X_train, y_train)
+model = SVR(kernel="rbf", C=40.0, epsilon=2.5)
+model.fit(X_train_std, y_train)
 
 # Coumpute SHAP value
-explainer = shappack.KernelExplainer(model.predict, X_train[0:100])
-shap_value = explainer.shap_values(X_test[1], n_workers=-1)
+i = 2
+explainer = shappack.KernelExplainer(model.predict, X_train_std[0:100])
+shap_value = explainer.shap_values(X_test_std[i], n_workers=-1)
 ```
 
 The usage of ShapPack is almost the same as that of [slundberg/shap](https://github.com/slundberg/shap).
@@ -43,10 +48,10 @@ For now, ShapPack does not have own visualization mechanism, so it is necessary 
 ```python
 import shap
 shap.initjs()
-shap.force_plot(explainer.base_val[0], shap_value, boston.feature_names)
+shap.force_plot(explainer.base_val[0], shap_value, X_test[i], boston.feature_names)
 ```
 
-<img src="./docs/images/boston-force-plot.png" alt="boston-force-plot" width="700">
+<img src="./docs/images/boston-force-plot.png" alt="boston-force-plot" width="750">
 
 ## License
 
