@@ -72,7 +72,7 @@ The features to be skipped can be specified by feature name or index number.
 Note that we need to pass a list of feature names to KernelExplainer's `feature_names` argument when specifying `skip_features` by feature names.
 
 ```python
-explainer = shappack.KernelExplainer(model.predict, X_train_std[0:100], feature_names=boston.feature_names)
+explainer = shappack.KernelExplainer(model.predict, X_train_std[:100], feature_names=boston.feature_names)
 skip_features=["PTRATIO", "TAX"]
 shap_value = explainer.shap_values(X_test_std[i], skip_features=skip_features, n_workers=-1)
 feature_names = np.delete(boston.feature_names, explainer.skip_idx)
