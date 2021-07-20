@@ -55,8 +55,9 @@ The usage of each of these arguments is described below.
 
 ### `n_workers`: Multiprocessing
 
-Specify the number of processes used for the calculation of SHAP values.  
-`n_workers=-1` means using all processors.  
+Specify the number of processes used for the calculation of SHAP values.
+`n_workers=-1` means using all processors.
+
 If the program is running on a multi-core server, we can expect a reduction in computation time.
 
 ```python
@@ -85,7 +86,7 @@ We can incorporate own implemented characteristic functions into the `characteri
 
 The example below is a function that replaces the expected value calculation in the original Kernel SHAP's characteristic function with a minimum value calculation.
 
-```
+```python
 def my_characteristic_func(instance, subsets, model, data):
     n_subsets = subsets.shape[0]
     n_data = data.shape[0]
