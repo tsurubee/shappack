@@ -30,12 +30,12 @@ X_train_std = scaler.fit_transform(X_train)
 X_test_std = scaler.transform(X_test)
 
 # Prepare model
-model = SVR(kernel="rbf", C=40.0, epsilon=2.5)
+model = SVR(kernel="rbf")
 model.fit(X_train_std, y_train)
 
 # Coumpute SHAP value
 i = 2
-explainer = shappack.KernelExplainer(model.predict, X_train_std[0:100])
+explainer = shappack.KernelExplainer(model.predict, X_train_std[:100])
 shap_value = explainer.shap_values(X_test_std[i], n_workers=-1)
 ```
 
