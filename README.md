@@ -51,7 +51,7 @@ shap.initjs()
 shap.force_plot(explainer.base_val[0], shap_value, X_test[i], boston.feature_names)
 ```
 
-<img src="./docs/images/boston-force-plot.png" alt="boston-force-plot" width="750">
+<img src="./docs/images/boston-force-plot.png" alt="boston-force-plot">
 
 ## License
 
